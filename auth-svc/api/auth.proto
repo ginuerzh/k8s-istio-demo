@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package api;
+
+service Auth {
+    rpc CreateToken(CreateTokenRequest) returns (CreateTokenResponse);
+    rpc DecodeToken(DecodeTokenRequest) returns (DecodeTokenResponse);
+    rpc DeleteToken(DeleteTokenRequest) returns (DeleteTokenResponse);
+}
+
+message CreateTokenRequest {
+    string uid = 1;
+    string platform = 2;
+}
+
+message CreateTokenResponse {
+    string token = 1;
+    int64 expiration = 2;
+}
+
+message DecodeTokenRequest {
+    string token = 1;
+}
+
+message DecodeTokenResponse {
+    string uid = 1;
+    string platform = 2;
+    int64 expiration = 3;
+}
+
+message DeleteTokenRequest {
+    string token = 1;
+}
+
+message DeleteTokenResponse {
+    string uid = 1;
+}

@@ -1,0 +1,45 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: demo-gateway
+  namespace: istio-demo
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - 'web.istio.demo'
+    port:
+      name: http
+      number: 80
+      protocol: HTTP
+    tls:
+      httpsRedirect: true
+  - hosts:
+    - 'web.istio.demo'
+    port:
+      name: https
+      number: 443
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      serverCertificate: /etc/istio/ingressgateway-certs/tls.crt
+      privateKey: /etc/istio/ingressgateway-certs/tls.key
+  - hosts:
+    - 'grpc.istio.demo'
+    port:
+      name: grpc
+      number: 80
+      # though it is GRPC protocol, but this field value should be HTTP. 
+      # Ref: https://github.com/istio/istio/issues/15365
+      protocol: HTTP 
+  - hosts:
+    - 'grpc.istio.demo'
+    port:
+      name: grpc-secure
+      number: 443
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      serverCertificate: /etc/istio/ingressgateway-certs/tls.crt
+      privateKey: /etc/istio/ingressgateway-certs/tls.key

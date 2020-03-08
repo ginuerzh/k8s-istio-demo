@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: istio-demo
+spec:
+  replicas: 2
+  minReadySeconds: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      name: auth
+      labels:
+        app: auth
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: auth-grpc
+        image: ginuerzh/auth-svc:0.1.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: GRPC_ADDR
+          valueFrom:
+            configMapKeyRef:
+              name: auth-grpc-config
+              key: grpc-addr
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: auth-grpc-config
+              key: redis-url
+        - name: TTL
+          valueFrom:
+            configMapKeyRef:
+              name: auth-grpc-config
+              key: ttl
+        volumeMounts:
+        - name: rsa-key
+          mountPath: /ssl/
+          readOnly: true
+        ports:
+        - name: grpc
+          containerPort: 8000
+          protocol: TCP
+        readinessProbe:
+          periodSeconds: 10
+          initialDelaySeconds: 5
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:8000"]
+        livenessProbe:
+          periodSeconds: 10
+          initialDelaySeconds: 5
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:8000"]
+      volumes:
+      - name: rsa-key
+        secret:
+          secretName: auth-rsa-key
+          optional: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  namespace: istio-demo
+spec:
+  selector:
+    app: auth
+  ports:
+  - name: grpc
+    port: 8000
+    targetPort: grpc

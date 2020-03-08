@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package api;
+
+import "google/api/annotations.proto";
+
+service User {
+  rpc Create(UserCreateRequest) returns (UserDetail) {
+    option (google.api.http) = {
+      post: "/v1/users"
+      body: "user"
+    };
+  }
+
+  rpc Detail(UserDetailRequest) returns (UserDetail) {
+    option (google.api.http) = {
+      get: "/v1/users/{id}"
+    };
+  }
+
+  rpc List(UserListRequest) returns (UserListResponse) {
+    option (google.api.http) = {
+      get: "/v1/users"
+    };
+  }
+
+  rpc Update(UserUpdateRequest) returns (UserDetail) {
+    option (google.api.http) = {
+      put: "/v1/users/{id}"
+      body: "user"
+    };
+  }
+
+  rpc Delete(UserDeleteRequest) returns (UserDetail) {
+    option (google.api.http) = {
+      delete: "/v1/users/{id}"
+    };
+  }
+}
+
+message UserDetail {
+  string id = 1;
+  string username = 2;
+  string name = 3;
+  int32 age = 4;
+  string avatar = 5;
+}
+
+message UserCreateRequest {
+  UserDetail user = 1;
+}
+
+message UserDetailRequest {
+  string id = 1;
+}
+
+message UserListRequest {
+   message UserFilter {
+     repeated string id = 1;
+     repeated string name = 2;
+     int32 age = 3;
+   }
+
+   UserFilter filter = 1;
+   int32 count = 2;
+   int32 limit = 3;
+}
+
+message UserListResponse {
+  repeated UserDetail users = 1;
+}
+
+message UserUpdateRequest {
+  string id = 1;
+  UserDetail user = 2;
+}
+
+message UserDeleteRequest {
+  string id = 1;
+}

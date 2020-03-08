@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user
+  namespace: istio-demo
+  labels:
+    app: user
+    version: v0.1.0
+spec:
+  replicas: 3
+  minReadySeconds: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: user
+  template:
+    metadata:
+      name: user
+      labels:
+        app: user
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: user-grpc
+        image: ginuerzh/user-svc:0.1.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: GRPC_ADDR
+          value: ":8000"
+        ports:
+        - name: grpc
+          containerPort: 8000
+          protocol: TCP
+        readinessProbe:
+          periodSeconds: 10
+          initialDelaySeconds: 5
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:8000"]
+        livenessProbe:
+          periodSeconds: 10
+          initialDelaySeconds: 5
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:8000"]
+      - name: user-gw
+        image: ginuerzh/user-svc:0.1.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: GW_ADDR
+          value: ":8080"
+        - name: GRPC_ENDPOINT
+          value: "127.0.0.1:8000"
+        command:
+        - /bin/user-gw
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user
+  namespace: istio-demo
+spec:
+  selector:
+    app: user
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+  - name: grpc
+    port: 8000
+    targetPort: grpc

@@ -1,0 +1,32 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: istio-demo
+  namespace: istio-demo
+spec:
+  gateways:
+  - demo-gateway
+  hosts:
+  - 'web.istio.demo'
+  - 'grpc.istio.demo'
+  http: 
+  - name: user-http
+    match:
+    - uri:
+        prefix: /v1/users
+    route:
+    - destination:
+        host: user.istio-demo.svc.cluster.local
+        port: 
+          number: 8080
+  - name: user-grpc
+    match:
+    - uri:
+        prefix: /api.User
+    - uri:
+        prefix: /grpc.reflection
+    route:
+    - destination:
+        host: user.istio-demo.svc.cluster.local
+        port: 
+          number: 8000
