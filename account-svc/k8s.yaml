@@ -1,8 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: account
+  name: account-v0.1.0
   namespace: istio-demo
+  labels:
+    app: account
+    version: v0.1.0
 spec:
   replicas: 2
   minReadySeconds: 10
@@ -13,11 +16,13 @@ spec:
   selector:
     matchLabels:
       app: account
+      version: v0.1.0
   template:
     metadata:
       name: account
       labels:
         app: account
+        version: v0.1.0
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64

@@ -12,6 +12,7 @@ import (
 	api "github.com/ginuerzh/k8s-istio-demo/account-svc/api"
 	"github.com/ginuerzh/k8s-istio-demo/account-svc/svc/account"
 	"github.com/ginuerzh/k8s-istio-demo/account-svc/svc/health"
+	authapi "github.com/ginuerzh/k8s-istio-demo/auth-svc/api"
 	userapi "github.com/ginuerzh/k8s-istio-demo/user-svc/api"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
@@ -23,11 +24,6 @@ func main() {
 	addr := os.Getenv("GRPC_ADDR")
 	if addr == "" {
 		addr = ":8000"
-	}
-
-	userEndpoint := os.Getenv("USER_ENDPOINT")
-	if userEndpoint == "" {
-		userEndpoint = ":9000"
 	}
 
 	ln, err := net.Listen("tcp", addr)
@@ -46,13 +42,27 @@ func main() {
 		),
 	)
 
-	grpcConn, err := grpc.DialContext(context.Background(), userEndpoint, grpc.WithInsecure())
+	userSvc := os.Getenv("USER_SERVICE")
+	if userSvc == "" {
+		userSvc = "user:8000"
+	}
+	userConn, err := grpc.DialContext(context.Background(), userSvc, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("failed to dial svc1: %v", err)
+		log.Fatalf("failed to dial user service: %v", err)
+	}
+
+	authSvc := os.Getenv("AUTH_SERVICE")
+	if authSvc == "" {
+		authSvc = "auth:8000"
+	}
+	authConn, err := grpc.DialContext(context.Background(), authSvc, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("failed to dial auth service: %v", err)
 	}
 
 	api.RegisterAccountServer(s, &account.Server{
-		UserClient: userapi.NewUserClient(grpcConn),
+		UserClient: userapi.NewUserClient(userConn),
+		AuthClient: authapi.NewAuthClient(authConn),
 	})
 	grpc_health_v1.RegisterHealthServer(s, &health.Server{})
 	reflection.Register(s)

@@ -5,11 +5,13 @@ import (
 	"os"
 
 	"github.com/ginuerzh/k8s-istio-demo/account-svc/api"
+	authapi "github.com/ginuerzh/k8s-istio-demo/auth-svc/api"
 	userapi "github.com/ginuerzh/k8s-istio-demo/user-svc/api"
 )
 
 type Server struct {
 	UserClient userapi.UserClient
+	AuthClient authapi.AuthClient
 }
 
 func (s *Server) Register(ctx context.Context, req *api.RegisterRequest) (*api.RegisterResponse, error) {
@@ -22,8 +24,19 @@ func (s *Server) Register(ctx context.Context, req *api.RegisterRequest) (*api.R
 		return nil, err
 	}
 
+	resp, err := s.AuthClient.CreateToken(ctx, &authapi.CreateTokenRequest{
+		Uid: req.Username,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	host, _ := os.Hostname()
-	return &api.RegisterResponse{Id: r.Id, Host: host + "/" + r.Name}, nil
+	return &api.RegisterResponse{
+		Id:    r.Id,
+		Token: resp.Token,
+		Host:  host + "/" + r.Name,
+	}, nil
 }
 
 func (s *Server) Login(ctx context.Context, req *api.LoginRequest) (*api.LoginResponse, error) {
@@ -34,13 +47,33 @@ func (s *Server) Login(ctx context.Context, req *api.LoginRequest) (*api.LoginRe
 		return nil, err
 	}
 
+	resp, err := s.AuthClient.CreateToken(ctx, &authapi.CreateTokenRequest{
+		Uid: req.Username,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	host, _ := os.Hostname()
-	return &api.LoginResponse{Id: r.Id, Host: host + "/" + r.Name}, nil
+	return &api.LoginResponse{
+		Id:    r.Id,
+		Token: resp.Token,
+		Host:  host + "/" + r.Name,
+	}, nil
 }
 
 func (s *Server) Logout(ctx context.Context, req *api.LogoutRequest) (*api.LogoutResponse, error) {
+	decodeResp, err := s.AuthClient.DecodeToken(ctx, &authapi.DecodeTokenRequest{
+		Token: req.Token,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	uid := decodeResp.GetUid()
+
 	r, err := s.UserClient.Delete(ctx, &userapi.UserDeleteRequest{
-		Id: req.Id,
+		Id: uid,
 	})
 	if err != nil {
 		return nil, err
@@ -48,7 +81,7 @@ func (s *Server) Logout(ctx context.Context, req *api.LogoutRequest) (*api.Logou
 
 	host, _ := os.Hostname()
 	return &api.LogoutResponse{
-		Id:   r.Id,
+		Id:   uid,
 		Host: host + "/" + r.Name,
 	}, nil
 }

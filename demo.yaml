@@ -15,7 +15,7 @@ spec:
     istio: ingressgateway
   servers:
   - hosts:
-    - 'web.istio.demo'
+    - 'api.istio.demo'
     port:
       name: http
       number: 80
@@ -23,27 +23,9 @@ spec:
     tls:
       httpsRedirect: true
   - hosts:
-    - 'web.istio.demo'
+    - 'api.istio.demo'
     port:
-      name: https
-      number: 443
-      protocol: HTTPS
-    tls:
-      mode: SIMPLE
-      serverCertificate: /etc/istio/ingressgateway-certs/tls.crt
-      privateKey: /etc/istio/ingressgateway-certs/tls.key
-  - hosts:
-    - 'grpc.istio.demo'
-    port:
-      name: grpc
-      number: 80
-      # though it is GRPC protocol, but this field value should be HTTP. 
-      # Ref: https://github.com/istio/istio/issues/15365
-      protocol: HTTP 
-  - hosts:
-    - 'grpc.istio.demo'
-    port:
-      name: grpc-secure
+      name: api
       number: 443
       protocol: HTTPS
     tls:
@@ -54,14 +36,13 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: accounts
+  name: istio-demo
   namespace: istio-demo
 spec:
   gateways:
   - demo-gateway
   hosts:
-  - web.istio.demo
-  - grpc.istio.demo
+  - api.istio.demo
   http: 
   - name: account-http
     match:
@@ -83,20 +64,6 @@ spec:
         host: account.istio-demo.svc.cluster.local
         port: 
           number: 8000
----
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  name: users
-  namespace: istio-demo
-spec:
-  gateways:
-  - demo-gateway
-  hosts:
-  - web.istio.demo
-  - grpc.istio.demo
-  - user.istio-demo.svc.cluster.local
-  http: 
   - name: user-http
     match:
     - uri:
@@ -115,6 +82,32 @@ spec:
         host: user.istio-demo.svc.cluster.local
         port: 
           number: 8000
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: accounts
+  namespace: istio-demo
+spec:
+  hosts:
+  - account.istio-demo.svc.cluster.local
+  http: 
+  - route:
+    - destination:
+        host: account.istio-demo.svc.cluster.local
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: users
+  namespace: istio-demo
+spec:
+  hosts:
+  - user.istio-demo.svc.cluster.local
+  http: 
+  - route:
+    - destination:
+        host: user.istio-demo.svc.cluster.local
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
