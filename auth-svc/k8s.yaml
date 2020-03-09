@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: auth
+  name: auth-v0.1.0
   namespace: istio-demo
 spec:
   replicas: 2
@@ -13,11 +13,13 @@ spec:
   selector:
     matchLabels:
       app: auth
+      version: v0.1.0
   template:
     metadata:
       name: auth
       labels:
         app: auth
+        version: v0.1.0
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64

@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: user
+  name: user-v0.1.0
   namespace: istio-demo
   labels:
     app: user
     version: v0.1.0
 spec:
-  replicas: 3
+  replicas: 2
   minReadySeconds: 10
   strategy:
     rollingUpdate:
@@ -16,11 +16,13 @@ spec:
   selector:
     matchLabels:
       app: user
+      version: v0.1.0
   template:
     metadata:
       name: user
       labels:
         app: user
+        version: v0.1.0
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64

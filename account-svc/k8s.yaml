@@ -64,6 +64,74 @@ spec:
           containerPort: 8080
           protocol: TCP
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-v0.1.1
+  namespace: istio-demo
+  labels:
+    app: account
+    version: v0.1.1
+spec:
+  replicas: 2
+  minReadySeconds: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: account
+      version: v0.1.1
+  template:
+    metadata:
+      name: account
+      labels:
+        app: account
+        version: v0.1.1
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+      - name: account-grpc
+        image: ginuerzh/account-svc:0.1.1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: GRPC_ADDR
+          value: ":8000"
+        - name: USER_SERVICE
+          value: "user.istio-demo.svc.cluster.local:8000"
+        - name: AUTH_SERVICE
+          value: "auth.istio-demo.svc.cluster.local:8000"
+        ports:
+        - name: grpc
+          containerPort: 8000
+          protocol: TCP
+        readinessProbe:
+          periodSeconds: 10
+          initialDelaySeconds: 5
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:8000"]
+        livenessProbe:
+          periodSeconds: 10
+          initialDelaySeconds: 5
+          exec:
+            command: ["/bin/grpc_health_probe", "-addr=:8000"]
+      - name: account-gw
+        image: ginuerzh/account-svc:0.1.1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: GW_ADDR
+          value: ":8080"
+        - name: GRPC_ENDPOINT
+          value: "127.0.0.1:8000"
+        command:
+        - /bin/account-gw
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+---
 apiVersion: v1
 kind: Service
 metadata:

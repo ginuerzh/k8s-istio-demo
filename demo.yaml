@@ -36,7 +36,7 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: istio-demo
+  name: accounts
   namespace: istio-demo
 spec:
   gateways:
@@ -46,13 +46,37 @@ spec:
   http: 
   - name: account-http
     match:
-    - uri:
+    - name: match-header
+      uri:
+        prefix: /v1/accounts
+      headers:
+        uid:
+          exact: gerry
+    route:
+    - destination:
+        host: account.istio-demo.svc.cluster.local
+        port: 
+          number: 8080
+        subset: v011
+    timeout: 5s
+  - name: account-http
+    match:
+    - name: default
+      uri:
         prefix: /v1/accounts
     route:
     - destination:
         host: account.istio-demo.svc.cluster.local
         port: 
           number: 8080
+        subset: v010
+      weight: 50
+    - destination:
+        host: account.istio-demo.svc.cluster.local
+        port: 
+          number: 8080
+        subset: v011
+      weight: 50
   - name: account-grpc
     match:
     - uri:
@@ -64,37 +88,24 @@ spec:
         host: account.istio-demo.svc.cluster.local
         port: 
           number: 8000
-  - name: user-http
-    match:
-    - uri:
-        prefix: /v1/users
-    route:
-    - destination:
-        host: user.istio-demo.svc.cluster.local
-        port: 
-          number: 8080
-  - name: user-grpc
-    match:
-    - uri:
-        prefix: /api.User
-    route:
-    - destination:
-        host: user.istio-demo.svc.cluster.local
-        port: 
-          number: 8000
 ---
 apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
+kind: DestinationRule
 metadata:
   name: accounts
   namespace: istio-demo
 spec:
-  hosts:
-  - account.istio-demo.svc.cluster.local
-  http: 
-  - route:
-    - destination:
-        host: account.istio-demo.svc.cluster.local
+  host: account.istio-demo.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+  subsets:
+  - name: v010
+    labels:
+      version: v0.1.0
+  - name: v011
+    labels:
+      version: v0.1.1
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
@@ -108,6 +119,30 @@ spec:
   - route:
     - destination:
         host: user.istio-demo.svc.cluster.local
+        subset: v010
+      weight: 100
+    - destination:
+        host: user.istio-demo.svc.cluster.local
+        subset: v011
+      weight: 0
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: users
+  namespace: istio-demo
+spec:
+  host: user.istio-demo.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+  subsets:
+  - name: v010
+    labels:
+      version: v0.1.0
+  - name: v011
+    labels:
+      version: v0.1.1
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
@@ -127,6 +162,33 @@ spec:
         host: auth.istio-demo.svc.cluster.local
         port: 
           number: 8000
+        subset: v010
+    fault:
+      delay:
+        # NOTE: the percentage is needed, at least for the version v1.4.3 I tested against, 
+        # or it will assume its value is 0, means no requests will be applied.
+        percentage: 
+          value: 0 
+        fixedDelay: 3s
+      abort:
+        percentage:
+          value: 0
+        httpStatus: 400
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: auths
+  namespace: istio-demo
+spec:
+  host: auth.istio-demo.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+  subsets:
+  - name: v010
+    labels:
+      version: v0.1.0
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
