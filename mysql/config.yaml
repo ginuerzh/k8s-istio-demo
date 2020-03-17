@@ -1,0 +1,8 @@
+mysqlRootPassword: "root"
+mysqlUser: "test"
+mysqlPassword: "12345678"
+mysqlAllowEmptyPassword: false
+nodeSelector: 
+  kubernetes.io/arch: "amd64"
+persistence:
+  size: 500Mi

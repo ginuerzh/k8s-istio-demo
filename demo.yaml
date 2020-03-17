@@ -5,6 +5,28 @@ metadata:
   labels:
     istio-injection: enabled
 ---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-demo
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: user
+  namespace: istio-demo
+spec:
+  selector:
+    matchLabels:
+      app: user
+  portLevelMtls:
+    8080:
+      mode: PERMISSIVE
+---
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
@@ -27,11 +49,74 @@ spec:
     port:
       name: api
       number: 443
+      # NOTE: this port serves both HTTP and gPRC(HTTP/2) traffic.
       protocol: HTTPS
     tls:
       mode: SIMPLE
       serverCertificate: /etc/istio/ingressgateway-certs/tls.crt
       privateKey: /etc/istio/ingressgateway-certs/tls.key
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Sidecar
+metadata:
+  name: istio-demo
+  namespace: istio-demo
+spec:
+  egress:
+  - hosts:
+    - "./*"
+    - "istio-system/*"
+  outboundTrafficPolicy:
+    # NOTE: the default mode is ALLOW_ANY (v1.4.3) 
+    # defined in configmap istio in istio-system namespace.
+    mode: REGISTRY_ONLY
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Sidecar
+metadata:
+  name: accounts
+  namespace: istio-demo
+spec:
+  workloadSelector:
+    labels:
+      app: account
+  egress:
+  - hosts:
+    - "./user.istio-demo.svc.cluster.local"
+    - "./auth.istio-demo.svc.cluster.local"
+    - "istio-system/*"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Sidecar
+metadata:
+  name: users
+  namespace: istio-demo
+spec:
+  workloadSelector:
+    labels:
+      app: user
+  egress:
+  - hosts:
+    - "mongo/mongo-mongodb.mongo.svc.cluster.local"
+    - "istio-system/*"
+  outboundTrafficPolicy:
+    mode: REGISTRY_ONLY
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Sidecar
+metadata:
+  name: auths
+  namespace: istio-demo
+spec:
+  workloadSelector:
+    labels:
+      app: auth
+  egress:
+  - hosts:
+    - "redis/redis-server.redis.svc.cluster.local"
+    - "istio-system/*"
+  outboundTrafficPolicy:
+    mode: REGISTRY_ONLY
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
@@ -41,8 +126,10 @@ metadata:
 spec:
   gateways:
   - demo-gateway
+  - mesh # also apply to sidecars in the mesh.
   hosts:
   - api.istio.demo
+  - account.istio-demo.svc.cluster.local
   http: 
   - name: account-http
     match:
@@ -119,12 +206,23 @@ spec:
   - route:
     - destination:
         host: user.istio-demo.svc.cluster.local
+        port:
+          number: 8000
         subset: v010
       weight: 100
     - destination:
         host: user.istio-demo.svc.cluster.local
+        port:
+          number: 8000
         subset: v011
       weight: 0
+    mirror:
+      host: user.istio-demo.svc.cluster.local
+      port:
+        number: 8000
+      subset: v010
+    mirrorPercentage:
+      value: 100.0
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: DestinationRule
@@ -193,16 +291,16 @@ spec:
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: redis-master
+  name: mongodb
   namespace: istio-demo
 spec:
   hosts:
-  - redis5-master.redis.svc.cluster.local
+  - mongo-mongodb.mongo.svc.cluster.local
   tcp:
   - match:
-    - port: 6379
+    - port: 27017
     route:
     - destination:
-        host: redis5-master.redis.svc.cluster.local
+        host: mongo-mongodb.mongo.svc.cluster.local
         port:
-          number: 6379
+          number: 27017

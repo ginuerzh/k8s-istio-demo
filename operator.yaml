@@ -1,0 +1,38 @@
+# istioctl manifest apply -f operator.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+spec:
+  profile: default
+  addonComponents:
+    tracing:
+      enabled: false 
+  components:
+    citadel:
+      enabled: false
+    pilot:
+      enabled: true
+      k8s:
+        resources:
+          requests:
+            cpu: 500m
+            memory: 128Mi
+    policy:
+      enabled: false
+  values:
+    global:
+      sds:
+        enabled: false
+      proxy:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+        accessLogFile: "dev/stdout"
+        accessLogEncoding: JSON
+        logLevel: info
+    pilot:
+      traceSampling: 100.0
+    tracing:
+      enabled: false

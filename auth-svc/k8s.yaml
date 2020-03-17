@@ -1,8 +1,17 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth
+  namespace: istio-demo
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: auth-v0.1.0
   namespace: istio-demo
+  labels:
+    app: auth
+    version: v0.1.0
 spec:
   replicas: 2
   minReadySeconds: 10
@@ -21,6 +30,7 @@ spec:
         app: auth
         version: v0.1.0
     spec:
+      serviceAccountName: auth
       nodeSelector:
         kubernetes.io/arch: amd64
       containers:
@@ -29,20 +39,11 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: GRPC_ADDR
-          valueFrom:
-            configMapKeyRef:
-              name: auth-grpc-config
-              key: grpc-addr
+          value: ":8000"
         - name: REDIS_URL
-          valueFrom:
-            configMapKeyRef:
-              name: auth-grpc-config
-              key: redis-url
+          value: "redis://redis-server.redis.svc.cluster.local:6379"
         - name: TTL
-          valueFrom:
-            configMapKeyRef:
-              name: auth-grpc-config
-              key: ttl
+          value: "300s"
         volumeMounts:
         - name: rsa-key
           mountPath: /ssl/

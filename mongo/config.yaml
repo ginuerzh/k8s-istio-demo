@@ -1,0 +1,12 @@
+# customized options.
+# helm show values stable/mongodb
+
+mongodbUsername: "istio"
+mongodbPassword: "12345678"
+mongodbDatabase: "istio-demo"
+
+nodeSelector: 
+  kubernetes.io/arch: "amd64"
+
+persistence:
+  size: 500Mi

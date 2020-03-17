@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: redis
+  labels:
+    app: redis
+    version: v5.0.7
+spec:
+  replicas: 1
+  minReadySeconds: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: redis
+      version: v5.0.7
+  template:
+    metadata:
+      name: redis
+      labels:
+        app: redis
+        version: v5.0.7
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 80
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - arm # rpi4 for me
+          - weight: 20
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+      containers:
+      - name: redis-server
+        image: redis:5.0.7-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: redis
+          containerPort: 6379
+          protocol: TCP
+        readinessProbe:
+          periodSeconds: 10
+          initialDelaySeconds: 5
+          exec:
+            command: ["/usr/local/bin/redis-cli", "ping"]
+        livenessProbe:
+          periodSeconds: 10
+          initialDelaySeconds: 5
+          exec:
+            command: ["/usr/local/bin/redis-cli", "ping"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-server
+  namespace: redis
+spec:
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: redis

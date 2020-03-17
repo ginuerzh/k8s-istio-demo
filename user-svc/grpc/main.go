@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
@@ -12,6 +13,8 @@ import (
 	"github.com/ginuerzh/k8s-istio-demo/user-svc/svc/health"
 	"github.com/ginuerzh/k8s-istio-demo/user-svc/svc/user"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -38,7 +41,19 @@ func main() {
 		),
 	)
 
-	api.RegisterUserServer(s, &user.Server{})
+	mongoAddr := os.Getenv("MONGO_URI")
+	if mongoAddr == "" {
+		mongoAddr = "mongodb://mongo:27017"
+	}
+
+	mongoClient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(mongoAddr))
+	if err != nil {
+		log.Fatalf("failed to init mongodb: %v", err)
+	}
+
+	api.RegisterUserServer(s, &user.Server{
+		MongoClient: mongoClient,
+	})
 	grpc_health_v1.RegisterHealthServer(s, &health.Server{})
 	reflection.Register(s)
 
